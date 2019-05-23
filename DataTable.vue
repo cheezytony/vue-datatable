@@ -1,0 +1,559 @@
+<!-- 
+	Vue Datatable 
+	Description: Vue Component for datatable with search, sorting, editing and pagination
+	Author: Antonio Okoro 
+	Version: 1.0.0 
+-->
+<template>
+	<div class="data-table">
+		<div class="data-table-inner" v-if="!loading">
+			<div class="row data-table-control" v-if="header">
+				<div class="col-md-6" v-if="limitable">
+					<div class="form-group">
+						<label>
+							Show 
+							<select  class="custom-select custom-select-sm" v-model="itemsPerPage">
+								<option value="1">1</option>
+								<option value="2">2</option>
+								<option value="5">5</option>
+								<option value="10">10</option>
+								<option value="15">15</option>
+								<option value="20">20</option>
+								<option value="25">25</option>
+								<option value="50">50</option>
+								<option value="75">75</option>
+								<option value="100">100</option>
+							</select> 
+							rows
+						</label>
+					</div>
+				</div>
+				<div class="col-md-6" v-if="searchable">
+					<div class="form-group">
+						<input type="text" class="form-control form-control-sm" placeholder="Search Records" @keyup="search(query)" v-model="query">
+					</div>
+				</div>
+			</div>
+			<div class="table-responsive">
+				<table class="table" :class="{straight: !breakWords, 'table-hover': !!onClick}">
+					<thead>
+						<tr>
+							<!-- Display Index If Requested -->
+							<th
+								v-if="index" @click="sortIndex"
+								class="sortable"
+								:class="{sort: sortColumn == '#', 'asc': sortColumn == '#' && asc, 'desc': sortColumn == '#' && !asc}"
+							>#</th>
+							<!-- Display All Parsed Headers -->
+							<th 
+								v-bind:key="index" 
+								v-for="(th, index) in headers" 
+								@click="sort(th.name)" 
+								class="sortable"
+								:class="{sort: sortColumn == th.name, 'asc': sortColumn == th.name && asc, 'desc': sortColumn == th.name && !asc}"
+								v-if="th.show"
+							>{{ th.th }}</th>
+							<!-- Display Actions If Provided -->
+							<th v-if="actions.length">Actions</th>
+						</tr>
+					</thead>
+					<tbody v-if="paginatedItems.length">
+						<!-- Loop Through All Parsed and Paginated Items -->
+						<tr v-bind:key="i" v-for="(item, i) in paginatedItems" :class="{clickable: !!onClick}">
+
+							<!-- Display Index If Requested -->
+							<td v-if="index">{{ item.index + 1 }}</td>
+
+							<!-- Display All Parsed Values -->
+							<td v-bind:key="j" v-for="(td, j) in item.details" @click="click(item.row, td.value, td.name, i)" v-if="td.show">
+								<!-- <component :is="i+'Component'" v-if="value.render"></component> -->
+								<span v-html="td.rendered != null ? td.rendered : '----'"></span>
+							</td>
+							
+							<!-- Diplay Actions If Provided -->
+							<td v-if="actions.length">
+								<!-- Loop Through All Provided Actions -->
+								<button 
+									type="button" 
+									class="btn" 
+									:class="`btn-${action.color} btn-${action.size}`" 
+									v-bind:key="j" 
+									v-for="(action, j) in actions" 
+									@click="action.action(item.row, i)"
+								>
+									{{ action.text }}
+								</button>
+							</td>
+						</tr>
+					</tbody>
+					<tbody v-else>
+						<!-- Display Empty Message If No Items Are Rendered -->
+						<tr>
+							<td align="center" :colspan="headers.length + (actions.length ? 1 : 0) + (index ? 1 : 0)">No results</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="row" v-if="footer">
+				<div class="col-md-6" v-if="pageDetails">
+					<div class="showing">
+						Showing 
+						<!-- Current Page Starting Index -->
+						{{ paginatedItems.length ? (itemsPerPage * (currentPage - 1)) + 1 : 0 }} 
+						to 
+						<!-- Current Page End Index -->
+						{{ (itemsPerPage * (currentPage -1 )) + paginatedItems.length }}  
+						of 
+						<!-- All Items Provided -->
+						{{ renderedItems.length }} items
+					</div>
+				</div>
+				<div class="col-md-6" v-if="paginate">
+					<ul class="pagination" v-if="paginateLinks.length">
+						<li class="page-item" v-if="pages && currentPage != 1">
+							<span class="page-link" @click="prev">Prev</span>
+						</li>
+						<li class="page-item" v-bind:key="item.page" v-for="item in paginateLinks" :class="{active: currentPage == item.page}">
+							<span class="page-link" @click="paginate(item.page)">{{ item.page }}</span>
+						</li>
+						<li class="page-item" v-if="pages && currentPage < pages">
+							<span class="page-link" @click="next">Next</span>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div class="data-table-loading" v-if="loading">
+			<div class="data-table-loading-spinner"></div>
+			<div class="data-table-loading-text">Loading Data</div>
+		</div>
+	</div>
+</template>
+
+<script>
+import toastr from "toastr";
+import Axios from "axios";
+import moment from "moment";
+import Vue from 'vue';
+export default {
+	data() {
+		return {
+			// Items TO Display For Each Paginated Page
+			itemsPerPage: 100,
+			// Current Page Number In Pagination
+			currentPage: 1,
+			// Current Page Items
+			paginatedItems: [],
+			// Sort Order
+			asc: "asc",
+			// Column For Sorting
+			sortColumn: null,
+			// Search Query
+			query: '',
+			// Table Headers
+			headers: [],
+			// Mapped Data
+			items: [],
+
+		}
+	},
+	props: {
+		// =================================
+		// Ajax
+		// Datatables Ajax Uses Axios
+		// Make Sure Axios Is Added As An NPM Dependency
+		// =================================
+		// Ajax URL
+		url: {
+			type: String,
+			default: () => ''
+		},
+		// Whether Or Not To Use Ajax
+		ajax: {
+			type: Boolean,
+			default: () => false
+		},
+		// Ajax Headers
+		AjaxHeaders: {
+			type: Object,
+			default: () => {}
+		},
+		
+		
+		// Table Items
+		data: {
+			type: Array,
+			default: () => []
+		},
+		// Action Buttons For Each Item
+		actions: {
+			type: Array,
+			default: () => []
+		},
+		// Columns and Appropriate Data Assigment
+		columns: {
+			type: Array,
+			default: () => []
+		},
+		// Whether or Not Items Should Be Indexed
+		index: {
+			type: Boolean,
+			default: () => true
+		},
+		// Set Loading Status 
+		loading: {
+			type: Boolean,
+			default: () => false
+		},
+		// Click Events For Each Cell
+		onClick: {
+			type: Function,
+			default: () => {}
+		},
+		// Whether Or Not The Table Should Be Allowed To Break Elements
+		breakWords: {
+			type: Boolean,
+			default: () => false
+		},
+		// Whether Or Not The Header Should Be Visible
+		header: {
+			type: Boolean,
+			default: () => true
+		},
+		// Whether Or Not The Footer Should Be Visible
+		footer: {
+			type: Boolean,
+			default: () => true
+		},
+		// Whether Or Not Searching Should Be Available
+		searchable: {
+			type: Boolean,
+			default: () => true
+		},
+		// Whether Or Not Page Limitation Should Be Changeable
+		limitable: {
+			type: Boolean,
+			default: () => true
+		},
+		// Whether Or Not Details Should Be Visible
+		pageDetails: {
+			type: Boolean,
+			default: () => true
+		},
+		// Whether Or Not The Results Should Be Paginatable
+		paginatable: {
+			type: Boolean,
+			default: () => true
+		}
+	},
+	methods: {
+		// Navigate To Provided Page
+		// Arguments
+		// 	Page: int
+		paginate(page) {
+			this.currentPage = page;
+		},
+		// Navigate To Next Page
+		next() {
+			this.currentPage = this.currentPage >= this.renderedItems.length ? 0 : this.currentPage + 1;
+		},
+		// Navigate To Previous Page
+		prev() {
+			this.currentPage = this.currentPage <= 0 ? this.renderedItems.length : this.currentPage - 1;
+		},
+		// Navigate To Last Page
+		end() {
+			this.currentPage = this.renderedItems.length;
+		},
+		// Navigate To First Page
+		start() {
+			this.currentPage = 1;
+		},
+		// Search Through Items With Provided Search Query 
+		// Arguments
+		// 	Query: string
+		search(query) {
+			let retval = this.items.filter(item => {
+				
+				var found = false;
+				item.details.forEach(detail => {
+					if (detail.value == null || detail.rendered == null) {
+						return;
+					}
+					if (detail.value.toString().match(new RegExp(query, "i"))) {
+						found = true;
+					}
+
+					if (detail.rendered.toString().match(new RegExp(query, "i"))) {
+						found = true;
+					}
+				});
+				return found;
+			});
+			this.renderedItems = retval;
+		},
+		// Sort Items By Specified Column and Order
+		// Arguments
+		// 	Column: String
+		// 	Order: String [asc, desc]
+		sort(column) {
+			
+			this.renderedItems = this.renderedItems.sort((a,b) => {
+				var detailx = a.details.find(detail => detail.name == column);
+				var x = detailx.value;
+				if (!x) {
+					
+				}
+				x = typeof x == 'string' ? x.toLowerCase() : x;
+				var detaily = b.details.find(detail => detail.name == column);
+				var y = detaily.value;
+				if (!x) {
+					
+				}
+				y = typeof y == 'string' ? y.toLowerCase() : y;
+				return x > y ? 1 : -1;
+			});
+			if (column !== this.sortColumn) {
+				this.asc = true;
+			}else {
+				this.asc = !this.asc;
+			}
+
+			if (!this.asc) {
+				this.renderedItems = this.renderedItems.reverse();
+			}
+			this.sortColumn = column;
+
+			this.currentPage = 1;
+		},
+		sortIndex(){
+			this.renderedItems = this.renderedItems.sort((a, b) => {
+				var indexA = a.index;
+				var indexB = b.index;
+				return indexA > indexB ? 1 : -1;
+			});
+			this.asc = this.sortColumn !== '#' ? true : !this.asc;
+
+			if (!this.asc) {
+				this.renderedItems = this.renderedItems.reverse();
+			}
+			
+			this.sortColumn = '#';
+
+			this.currentPage = 1;
+		},
+		getHeaders() {
+			this.headers = this.columns.map((item) => ({name: item.name, th: item.th, show: item.show !== false}));
+		},
+		mapItems(items) {
+			items = this.data.map((item, index) => {
+				var data = {row: item, details: [], index};
+				this.columns.forEach(column => {
+					
+					data.details.push({
+						name:column.name,
+						th: column.th,
+						value: item[column.name],
+						rendered: column.render ? column.render(item, item[column.name], index) : item[column.name],
+						row: item,
+						show: column.show !== false
+					});
+
+				});
+				return data;
+			});			
+			return items;
+		},
+		click(row, cell, name, index) {
+			if (this.onClick) {
+				this.onClick(...arguments);
+			}
+		},
+
+		
+		// Alerts
+		success(success = "Success") {
+			toastr.success(success);
+		},
+		error(error = "Error") {
+			toastr.error(error);
+		}
+	},
+	computed: {
+		// Items To Be Displayed
+		renderedItems: {
+			get() {
+				var items = this.data;
+				items = this.mapItems(this.data);				
+				return items;
+			},
+			set(newValue) {
+				this.paginatedItems = newValue.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
+			}
+		},
+		// Total Number Of Pages For Pagination
+		pages() {
+			if (this.renderedItems.length > this.itemsPerPage) {
+				return Math.ceil(this.renderedItems.length / this.itemsPerPage);
+			}else {
+				return 0;
+			}
+		},
+		// Array Of Links With Page Number For Pagination
+		paginateLinks() {
+			var links = [];
+			var approved = [];
+			let center = Math.round(this.pages / 2) - 1 ;
+			for (var i = 0; i < this.pages; i++) {
+				if (this.pages > 6) {
+					let difference = this.currentPage - i;
+					let centerDifference = center - i;
+					// around the current page
+					if (!(difference < 0) && !(difference > 2)) {
+					// around the center
+					}else if (i === center) {
+					// at the start or end
+					}else if (this.pages - i <= 2 || i <= 1){
+					// everywhere else
+					}else {
+						continue;
+					}
+				}
+				links.push({page: i + 1});
+			}
+			return links;
+		},
+
+	},
+	watch: {
+		currentPage(newValue) {
+			this.paginatedItems = this.renderedItems.slice(this.itemsPerPage * (newValue - 1), (this.itemsPerPage * newValue));
+		},
+		itemsPerPage(newValue) {
+			this.currentPage = 1;
+			this.paginatedItems = this.renderedItems.slice(newValue * (this.currentPage - 1), (newValue * this.currentPage));
+		},
+		items(newValue) {
+			this.getHeaders();
+			this.renderedItems = this.mapItems(this.data);
+			this.asc = true;
+			this.sortIndex();
+		},
+		data(newValue) {
+			this.items = this.mapItems(newValue);
+		}
+	},
+	// Lifetime Events
+	mounted() {
+		if (!this.ajax) {
+			this.items = this.mapItems(this.data);
+			this.paginatedItems = this.renderedItems.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
+			this.getHeaders();
+			this.asc = true;
+			this.sortIndex();
+		}else {
+			Axios
+				.get(this.url)
+				.then(response => {
+					if (!response.data.data) {
+						return this.error("Unable To Parse Data");
+					}
+					this.items = this.response.data.data;
+					this.success("Data Loaded");
+				})
+				.catch(response => {
+					this.error(response.message || "Unable To Load Data");
+				});
+		}
+	}
+}
+</script>
+
+<style lang="sass">
+@keyframes spin
+	from
+		transform: rotate(0deg)
+	to
+		transform: rotate(359deg)
+.data-table
+	// font-size: 14px
+	&-loading
+		align-items: center
+		display: flex
+		height: 200px
+		flex-flow: column
+		justify-content: center
+		position: relative
+		width: 100%
+		&-spinner
+			animation: spin 1s linear infinite
+			border-radius: 999px
+			border: 2px solid #007bff
+			border-top-color: transparent
+			content: ''
+			height: 75px
+			margin-bottom: 15px
+			width: 75px
+		&-text
+			font-weight: 300
+			text-trnasform: uppercase
+	
+	&-control
+		.custom-select
+			width: initial
+	
+	.table
+		&-responsive
+			margin-bottom: 30px
+			&::-webkit-scrollbar
+				-webkit-apperance: none
+				height: 15px
+				width: 15px
+				&-track
+					background: #eee
+					border-radius: 999px
+				&-thumb
+					background: #ccc
+					border-radius: 999px
+					border: 3px solid #eee
+					&:focus
+						background: #ccc
+		&.straight
+			white-space: nowrap
+		thead
+			th
+				// font-size: 13px
+				font-weight: 500
+				&.sortable
+					cursor: pointer
+					padding-right: 20px
+					position: relative
+					&:before,
+					&:after
+						border: 5px solid transparent
+						content: ''
+						display: block
+						opacity: .3
+						position: absolute
+						right: 10px
+					&:before
+						border-bottom-color: currentColor
+						top: 10px
+					&:after
+						bottom: 10px
+						border-top-color: currentColor
+				&.sort
+					font-weight: 700
+					&.asc
+						&:before
+							opacity: 1
+					&.desc
+						&:after
+							opacity: 1
+		tbody
+			tr
+				&.clickable
+					cursor: pointer
+			td
+				// font-size: 12px
+</style>

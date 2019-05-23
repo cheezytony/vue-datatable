@@ -112,8 +112,8 @@ Here's how you would use it in Example.vue
 
 #### data
 Items to be displayed in the table
+<br/>
 Should be an array of objects
-
 ```javascript
 [
 	{	first_name: "Antonio",
@@ -137,23 +137,26 @@ Should be an array of objects
 ```
 
 #### actions
-| Action Buttons For Each Item Row
-| Should be an array of objects
-| Each button uses bootstrap button styles and classess
+Action Buttons For Each Item Row
+<br/>
+Should be an array of objects
+<br/>
+Each button uses bootstrap button styles and classess
 
 #### Action Properties
 ```text```
-| Text to be displayed on the button
+Text to be displayed on the button
 
 ```color```
-| Color of the button ```primary```, ```success```, ```danger```, ```warning```, ```info```, ```dark```, ```light```, ```any others defined in the css```
+Color of the button ```primary```, ```success```, ```danger```, ```warning```, ```info```, ```dark```, ```light```, ```any others defined in the css```
 
 ```size```
-| Size of the button ```sm```, ```lg```, ```any others defined in the css```
+Size of the button ```sm```, ```lg```, ```any others defined in the css```
 
 ```action```
-| Function to be called whenever the button is clicked
-| it passess three arguments to the provided function
+Function to be called whenever the button is clicked
+<br/>
+it passess three arguments to the provided function
 
 |	parameter	|	description		|
 |---------------|-------------------|
@@ -170,18 +173,19 @@ Should be an array of objects
 ```
 
 #### columns
-| Columns and Appropriate Data Assigment
+Columns and Appropriate Data Assigment
 
 ##### Column Properties
 ```name```
-| Name of the column for identification
+Name of the column for identification
 
 ```th```
-| Title of the column to be displayed on the table header
+Title of the column to be displayed on the table header
 
 ```render```
-| Custom function to display the columns data
-| it passess three arguments to the provided function
+Custom function to display the columns data
+<br/>
+it passess three arguments to the provided function
 
 |	parameter	|	description		|
 |---------------|-------------------|
@@ -199,17 +203,21 @@ Should be an array of objects
 
 
 #### index
-| Whether or Not Items Should Be Indexed
-| default: ```true```
+Whether or Not Items Should Be Indexed
+<br/>
+default: ```true```
 
 #### loading
-| Set Loading Status
-| whenever this property changes the state will as well
-| default: ```false```
+Set Loading Status
+<br/>
+whenever this property changes the state will as well
+<br/>
+default: ```false```
 
 #### onClick
-| A function to be called whenever a cell is clicked
-| It passes four arguments to the provided function
+A function to be called whenever a cell is clicked
+<br/>
+It passes four arguments to the provided function
 
 |	parameter	|	description		|
 |---------------|-------------------|
@@ -229,31 +237,40 @@ methods: {
 
 
 #### breakWords
-| Whether Or Not The Table Should Be Allowed To Break Text
-| default: ```false```
+Whether Or Not The Table Should Be Allowed To Break Text
+<br/>
+default: ```false```
 
 #### header
-| Whether Or Not The Header Section Should Be Visible
-| i.e the page limit and search sections at the top
-| default: ```true```
+Whether Or Not The Header Section Should Be Visible
+<br/>
+i.e the page limit and search sections at the top
+<br/>
+default: ```true```
 
 #### footer
-| Whether Or Not The Footer Section Should Be Visible
-| i.e the current page details and the pagination links at the bottom
-| default: ```true```
+Whether Or Not The Footer Section Should Be Visible
+<br/>
+i.e the current page details and the pagination links at the bottom
+<br/>
+default: ```true```
 
 #### searchable
-| default: ```true```
-| Whether Or Not Searching Should Be Available
+default: ```true```
+Whether Or Not Searching Should Be Available
+<br/>
 
 #### limitable
-| Whether Or Not Page Limitation Should Be Changeable
-| default: ```true```
+Whether Or Not Page Limitation Should Be Changeable
+<br/>
+default: ```true```
 
 #### pageDetails
-| Whether Or Not Details Should Be Visible
-| default: ```true```
+Whether Or Not Details Should Be Visible
+<br/>
+default: ```true```
 
 #### paginatable
-| Whether Or Not The Results Should Be paginatable
-| default: ```true```
+Whether Or Not The Results Should Be paginatable
+<br/>
+default: ```true```

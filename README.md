@@ -93,9 +93,7 @@ Here's how you would use it in Example.vue
 					{name: "date_of_birth", th: "Date Of Birth", show: false},
 					{name: "age", th: "Age", render (row, cell, index) {
 						// Parse date and display difference
-						return moment(cell).fromNow();
-
-						return moment(row.date_of_birth).fromNow()
+						return moment(row.date_of_birth).fromNow();
 					}},
 				]
 			}

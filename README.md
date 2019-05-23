@@ -112,7 +112,6 @@ Here's how you would use it in Example.vue
 
 #### data
 Items to be displayed in the table
-
 Should be an array of objects
 
 ```javascript

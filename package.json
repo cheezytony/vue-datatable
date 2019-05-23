@@ -20,5 +20,9 @@
   "bugs": {
     "url": "https://github.com/cheezytony/vue-datatable/issues"
   },
-  "homepage": "https://github.com/cheezytony/vue-datatable#readme"
+  "homepage": "https://github.com/cheezytony/vue-datatable#readme",
+  "dependencies": {
+    "moment": "^2.24.0",
+    "toastr": "^2.1.4"
+  }
 }

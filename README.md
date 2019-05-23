@@ -12,24 +12,6 @@ require("bootstrap-vue-datatable");
 ```
 
 
-## Configuration
-|	Option   	 |	Description													|   Data Type   |   Default  	|
-|----------------|--------------------------------------------------------------|---------------|---------------|
-| 	data	 	 | 	Table Items													|   Array       |   []			|
-| 	actions	 	 | 	Action Buttons For Each Item								|   Array       |   []			|
-| 	columns	 	 | 	Columns and Appropriate Data Assigment 						|   Array       |   []			|
-| 	index	 	 | 	Whether or Not Items Should Be Indexed						|   Boolean     |   true		|
-| 	loading	 	 | 	Set Loading Status 											|   Boolean     |   false		|
-| 	onClick	 	 | 	Click Events For Each Cell									|   Function    |   {} 			|
-| 	breakWords	 | 	Whether Or Not The Table Should Be Allowed To Break Text	|   Boolean     |   false		|
-| 	header	 	 | 	Whether Or Not The Header Should Be Visible					|   Boolean     |   true		|
-| 	footer	 	 | 	Whether Or Not The Footer Should Be Visible					|   Boolean     |   true		|
-| 	searchable	 | 	Whether Or Not Searching Should Be Available				|   Boolean     |   true		|
-| 	limitable	 | 	Whether Or Not Page Limitation Should Be Changeable			|   Boolean     |   true		|
-| 	pageDetails	 | 	Whether Or Not Details Should Be Visible					|   Boolean     |   true		|
-| 	paginatable	 | 	Whether Or Not The Results Should Be paginatable			|   Boolean     |   true		|
-
-
 ## Example
 Here's how you would use it in Example.vue
 
@@ -107,3 +89,62 @@ Here's how you would use it in Example.vue
 	}
 </script>
 ```
+
+
+## Configuration
+|	Option   	 |	Description													|   Data Type   |   Default  	|
+|----------------|--------------------------------------------------------------|---------------|---------------|
+| 	data	 	 | 	Items to be displayed in the table							|   Array       |   []			|
+| 	actions	 	 | 	Action Buttons For Each Item								|   Array       |   []			|
+| 	columns	 	 | 	Columns and Appropriate Data Assigment 						|   Array       |   []			|
+| 	index	 	 | 	Whether or Not Items Should Be Indexed						|   Boolean     |   true		|
+| 	loading	 	 | 	Set Loading Status 											|   Boolean     |   false		|
+| 	onClick	 	 | 	Click Events For Each Cell									|   Function    |   {} 			|
+| 	breakWords	 | 	Whether Or Not The Table Should Be Allowed To Break Text	|   Boolean     |   false		|
+| 	header	 	 | 	Whether Or Not The Header Should Be Visible					|   Boolean     |   true		|
+| 	footer	 	 | 	Whether Or Not The Footer Should Be Visible					|   Boolean     |   true		|
+| 	searchable	 | 	Whether Or Not Searching Should Be Available				|   Boolean     |   true		|
+| 	limitable	 | 	Whether Or Not Page Limitation Should Be Changeable			|   Boolean     |   true		|
+| 	pageDetails	 | 	Whether Or Not Details Should Be Visible					|   Boolean     |   true		|
+| 	paginatable	 | 	Whether Or Not The Results Should Be paginatable			|   Boolean     |   true		|
+
+
+
+#### data
+Items to be displayed in the table
+
+#### actions
+Action Buttons For Each Item
+
+#### columns
+Columns and Appropriate Data Assigment
+
+#### index
+Whether or Not Items Should Be Indexed
+
+#### loading
+Set Loading Status
+
+#### onClick
+Click Events For Each Cell
+
+#### breakWords
+Whether Or Not The Table Should Be Allowed To Break Text
+
+#### header
+Whether Or Not The Header Should Be Visible
+
+#### footer
+Whether Or Not The Footer Should Be Visible
+
+#### searchable
+Whether Or Not Searching Should Be Available
+
+#### limitable
+Whether Or Not Page Limitation Should Be Changeable
+
+#### pageDetails
+Whether Or Not Details Should Be Visible
+
+#### paginatable
+Whether Or Not The Results Should Be paginatable

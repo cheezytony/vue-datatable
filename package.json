@@ -1,5 +1,5 @@
 {
-  "name": "vue-datatable",
+  "name": "bootstrap-vue-datatable",
   "version": "1.0.0",
   "description": "A datatable plugin for vue and bootstrap",
   "main": "index.js",

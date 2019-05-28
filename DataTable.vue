@@ -6,11 +6,15 @@
 -->
 <template>
 	<div class="data-table">
+<<<<<<< HEAD
 		<div class="data-table-loading" v-if="loading || ajaxLoading">
 			<div class="data-table-loading-spinner"></div>
 			<div class="data-table-loading-text">Loading Data</div>
 		</div>
 		<div class="data-table-inner" v-else>
+=======
+		<div class="data-table-inner" v-if="!loading">
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 			<div class="row data-table-control" v-if="header">
 				<div class="col-md-6" v-if="limitable">
 					<div class="form-group">
@@ -37,6 +41,7 @@
 						<input type="text" class="form-control form-control-sm" placeholder="Search Records" @keyup="search(query)" v-model="query">
 					</div>
 				</div>
+<<<<<<< HEAD
 				<div class="col-auto ml-auto" v-if="showFilters">
 					Filters: 
 					<div class="table-filters d-inline-block">
@@ -45,6 +50,8 @@
 						</div>
 					</div>
 				</div>
+=======
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 			</div>
 			<div class="table-responsive">
 				<table class="table" :class="{straight: !breakWords, 'table-hover': !!onClick}">
@@ -135,6 +142,13 @@
 				</div>
 			</div>
 		</div>
+<<<<<<< HEAD
+=======
+		<div class="data-table-loading" v-if="loading">
+			<div class="data-table-loading-spinner"></div>
+			<div class="data-table-loading-text">Loading Data</div>
+		</div>
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 	</div>
 </template>
 
@@ -162,8 +176,11 @@ export default {
 			headers: [],
 			// Mapped Data
 			items: [],
+<<<<<<< HEAD
 			// Loading State For Ajax Requests
 			ajaxLoading: false
+=======
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 
 		}
 	},
@@ -205,10 +222,13 @@ export default {
 			type: Array,
 			default: () => []
 		},
+<<<<<<< HEAD
 		filters: {
 			type: Array,
 			default: () => []
 		},
+=======
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 		// Whether or Not Items Should Be Indexed
 		index: {
 			type: Boolean,
@@ -356,6 +376,7 @@ export default {
 
 			this.currentPage = 1;
 		},
+<<<<<<< HEAD
 
 		filter(filter){
 			var filterValue = filter.value,
@@ -381,11 +402,17 @@ export default {
 			this.currentPage = 1;
 		},
 
+=======
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 		getHeaders() {
 			this.headers = this.columns.map((item) => ({name: item.name, th: item.th, show: item.show !== false}));
 		},
 		mapItems(items) {
+<<<<<<< HEAD
 			items = items.map((item, index) => {
+=======
+			items = this.data.map((item, index) => {
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 				var data = {row: item, details: [], index};
 				this.columns.forEach(column => {
 					
@@ -422,8 +449,13 @@ export default {
 		// Items To Be Displayed
 		renderedItems: {
 			get() {
+<<<<<<< HEAD
 				var items = this.items;
 				items = this.mapItems(this.items);				
+=======
+				var items = this.data;
+				items = this.mapItems(this.data);				
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 				return items;
 			},
 			set(newValue) {
@@ -462,9 +494,13 @@ export default {
 			}
 			return links;
 		},
+<<<<<<< HEAD
 		showFilters() {
 			return Object.keys(this.filters).length > 0;
 		}
+=======
+
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 	},
 	watch: {
 		currentPage(newValue) {
@@ -476,6 +512,7 @@ export default {
 		},
 		items(newValue) {
 			this.getHeaders();
+<<<<<<< HEAD
 
 			this.renderedItems = this.mapItems(newValue);
 
@@ -510,11 +547,32 @@ export default {
 			// Get Data From Server Using Ajax
 			this.ajaxLoading = true;
 			await Axios
+=======
+			this.renderedItems = this.mapItems(this.data);
+			this.asc = true;
+			this.sortIndex();
+		},
+		data(newValue) {
+			this.items = this.mapItems(newValue);
+		}
+	},
+	// Lifetime Events
+	mounted() {
+		if (!this.ajax) {
+			this.items = this.mapItems(this.data);
+			this.paginatedItems = this.renderedItems.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
+			this.getHeaders();
+			this.asc = true;
+			this.sortIndex();
+		}else {
+			Axios
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 				.get(this.url)
 				.then(response => {
 					if (!response.data.data) {
 						return this.error("Unable To Parse Data");
 					}
+<<<<<<< HEAD
 					this.items = response.data.data;
 					this.success("Data Loaded");
 				})
@@ -522,6 +580,14 @@ export default {
 					this.error(error || "Unable To Load Data");
 				});
 			this.ajaxLoading = false;
+=======
+					this.items = this.response.data.data;
+					this.success("Data Loaded");
+				})
+				.catch(response => {
+					this.error(response.message || "Unable To Load Data");
+				});
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 		}
 	}
 }
@@ -584,7 +650,11 @@ export default {
 				font-weight: 500
 				&.sortable
 					cursor: pointer
+<<<<<<< HEAD
 					padding-right: 30px
+=======
+					padding-right: 20px
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 					position: relative
 					&:before,
 					&:after
@@ -614,6 +684,7 @@ export default {
 					cursor: pointer
 			td
 				// font-size: 12px
+<<<<<<< HEAD
 
 		&-filters
 			margin-bottom: 15px
@@ -633,4 +704,6 @@ export default {
 				color: #000
 
 
+=======
+>>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 </style>

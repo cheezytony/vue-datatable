@@ -6,15 +6,11 @@
 -->
 <template>
 	<div class="data-table">
-<<<<<<< HEAD
 		<div class="data-table-loading" v-if="loading || ajaxLoading">
 			<div class="data-table-loading-spinner"></div>
 			<div class="data-table-loading-text">Loading Data</div>
 		</div>
 		<div class="data-table-inner" v-else>
-=======
-		<div class="data-table-inner" v-if="!loading">
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 			<div class="row data-table-control" v-if="header">
 				<div class="col-md-6" v-if="limitable">
 					<div class="form-group">
@@ -41,7 +37,6 @@
 						<input type="text" class="form-control form-control-sm" placeholder="Search Records" @keyup="search(query)" v-model="query">
 					</div>
 				</div>
-<<<<<<< HEAD
 				<div class="col-auto ml-auto" v-if="showFilters">
 					Filters: 
 					<div class="table-filters d-inline-block">
@@ -50,8 +45,6 @@
 						</div>
 					</div>
 				</div>
-=======
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 			</div>
 			<div class="table-responsive">
 				<table class="table" :class="{straight: !breakWords, 'table-hover': !!onClick}">
@@ -90,17 +83,17 @@
 							</td>
 							
 							<!-- Diplay Actions If Provided -->
-							<td v-if="actions.length">
+							<td v-if="item.buttons.length">
 								<!-- Loop Through All Provided Actions -->
 								<button 
 									type="button" 
 									class="btn" 
-									:class="`btn-${action.color} btn-${action.size}`" 
+									:class="`btn-${button.color} btn-${button.size}`" 
 									v-bind:key="j" 
-									v-for="(action, j) in actions" 
-									@click="action.action(item.row, i)"
+									v-for="(button, j) in item.buttons" 
+									@click="button.action(item.row, i)"
 								>
-									{{ action.text }}
+									{{ button.text }}
 								</button>
 							</td>
 						</tr>
@@ -142,13 +135,6 @@
 				</div>
 			</div>
 		</div>
-<<<<<<< HEAD
-=======
-		<div class="data-table-loading" v-if="loading">
-			<div class="data-table-loading-spinner"></div>
-			<div class="data-table-loading-text">Loading Data</div>
-		</div>
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 	</div>
 </template>
 
@@ -176,11 +162,10 @@ export default {
 			headers: [],
 			// Mapped Data
 			items: [],
-<<<<<<< HEAD
+			// Mapped Action Buttons
+			buttons: [],
 			// Loading State For Ajax Requests
 			ajaxLoading: false
-=======
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 
 		}
 	},
@@ -222,13 +207,10 @@ export default {
 			type: Array,
 			default: () => []
 		},
-<<<<<<< HEAD
 		filters: {
 			type: Array,
 			default: () => []
 		},
-=======
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 		// Whether or Not Items Should Be Indexed
 		index: {
 			type: Boolean,
@@ -307,21 +289,38 @@ export default {
 		// Arguments
 		// 	Query: string
 		search(query) {
-			let retval = this.items.filter(item => {
+			var items = this.mapItems(this.items);
+			let retval = items.filter(item => {
 				
 				var found = false;
+				// Search In Mapped Data
 				item.details.forEach(detail => {
+					// Cancel If Original And Processed Value Are NULL
 					if (detail.value == null || detail.rendered == null) {
 						return;
 					}
+					// If Found In Original Value
 					if (detail.value.toString().match(new RegExp(query, "i"))) {
 						found = true;
 					}
 
+					// If Found In Processed Value
 					if (detail.rendered.toString().match(new RegExp(query, "i"))) {
 						found = true;
 					}
 				});
+
+				// Search In Provided Data
+				for (var column in item.row) {
+					if (!item.row[column]) {
+						continue;
+					}
+
+					if (item.row[column].toString().match(new RegExp(query, "i"))) {
+						found = true;
+					}
+				}
+
 				return found;
 			});
 			this.renderedItems = retval;
@@ -376,13 +375,13 @@ export default {
 
 			this.currentPage = 1;
 		},
-<<<<<<< HEAD
 
 		filter(filter){
 			var filterValue = filter.value,
 			filterColumn = filter.name;
 
-			var filtered = this.items.filter((item, index) => {
+			var items = this.mapItems(this.items);
+			var filtered = items.filter((item, index) => {
 				var column = item.details.find((column, i) => column.name == filterColumn);
 				if (!column) {
 					return false;
@@ -397,39 +396,56 @@ export default {
 				}
 				return false;
 			});
-			// console.log(filtered);
+
 			this.renderedItems = filtered;
 			this.currentPage = 1;
 		},
 
-=======
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 		getHeaders() {
 			this.headers = this.columns.map((item) => ({name: item.name, th: item.th, show: item.show !== false}));
 		},
 		mapItems(items) {
-<<<<<<< HEAD
 			items = items.map((item, index) => {
-=======
-			items = this.data.map((item, index) => {
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
-				var data = {row: item, details: [], index};
-				this.columns.forEach(column => {
+				// Row Item
+				var row = {row: item, details: [], index, buttons: []};
+
+				// Get Provided Columns
+				this.columns.forEach((column, index2) => {
 					
-					data.details.push({
+					row.details.push({
+						// Item Column Name
 						name:column.name,
+						// Table Header Title
 						th: column.th,
+						// Provided Value
 						value: item[column.name],
+						// Decide Value Depending On Whether Render Method Is Provided
 						rendered: column.render ? column.render(item, item[column.name], index) : item[column.name],
+						// Origin Item Row
 						row: item,
+						// Whether Or Not To Display Item
 						show: column.show !== false
 					});
 
 				});
-				return data;
+
+				// Get Provided Actions
+				this.actions.forEach((button, index3) => {
+
+					row.buttons.push({
+						// Spread Provided Button Properties
+						...button,
+						// Decide Visibility Depending On Whether Show Method Is Provided
+						// Default: true
+						show: button.show ? button.show(item,index) : true
+					});
+
+				});
+
+				return row;
 			});			
 			return items;
-		},
+		} ,
 		click(row, cell, name, index) {
 			if (this.onClick) {
 				this.onClick(...arguments);
@@ -449,13 +465,8 @@ export default {
 		// Items To Be Displayed
 		renderedItems: {
 			get() {
-<<<<<<< HEAD
 				var items = this.items;
 				items = this.mapItems(this.items);				
-=======
-				var items = this.data;
-				items = this.mapItems(this.data);				
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 				return items;
 			},
 			set(newValue) {
@@ -494,13 +505,9 @@ export default {
 			}
 			return links;
 		},
-<<<<<<< HEAD
 		showFilters() {
 			return Object.keys(this.filters).length > 0;
 		}
-=======
-
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 	},
 	watch: {
 		currentPage(newValue) {
@@ -512,7 +519,6 @@ export default {
 		},
 		items(newValue) {
 			this.getHeaders();
-<<<<<<< HEAD
 
 			this.renderedItems = this.mapItems(newValue);
 
@@ -547,32 +553,11 @@ export default {
 			// Get Data From Server Using Ajax
 			this.ajaxLoading = true;
 			await Axios
-=======
-			this.renderedItems = this.mapItems(this.data);
-			this.asc = true;
-			this.sortIndex();
-		},
-		data(newValue) {
-			this.items = this.mapItems(newValue);
-		}
-	},
-	// Lifetime Events
-	mounted() {
-		if (!this.ajax) {
-			this.items = this.mapItems(this.data);
-			this.paginatedItems = this.renderedItems.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
-			this.getHeaders();
-			this.asc = true;
-			this.sortIndex();
-		}else {
-			Axios
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 				.get(this.url)
 				.then(response => {
 					if (!response.data.data) {
 						return this.error("Unable To Parse Data");
 					}
-<<<<<<< HEAD
 					this.items = response.data.data;
 					this.success("Data Loaded");
 				})
@@ -580,14 +565,6 @@ export default {
 					this.error(error || "Unable To Load Data");
 				});
 			this.ajaxLoading = false;
-=======
-					this.items = this.response.data.data;
-					this.success("Data Loaded");
-				})
-				.catch(response => {
-					this.error(response.message || "Unable To Load Data");
-				});
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 		}
 	}
 }
@@ -650,11 +627,7 @@ export default {
 				font-weight: 500
 				&.sortable
 					cursor: pointer
-<<<<<<< HEAD
 					padding-right: 30px
-=======
-					padding-right: 20px
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 					position: relative
 					&:before,
 					&:after
@@ -684,7 +657,6 @@ export default {
 					cursor: pointer
 			td
 				// font-size: 12px
-<<<<<<< HEAD
 
 		&-filters
 			margin-bottom: 15px
@@ -704,6 +676,4 @@ export default {
 				color: #000
 
 
-=======
->>>>>>> c67cee613ac35b33d9dc356be7eae6d1d0abf9e2
 </style>

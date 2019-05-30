@@ -11,6 +11,11 @@ require("bootstrap-vue-datatable");
 <datatable :data="[]" :columns="[]" :actions="[]"></datatable>
 ```
 
+```vue
+<!-- Using Ajax -->
+<datatable :ajax="true" :url="https://demosite.com/api/users" :columns="[]" :actions="[]"></datatable>
+```
+
 
 ## Example
 Here's how you would use it in Example.vue
@@ -94,6 +99,8 @@ Here's how you would use it in Example.vue
 ## Configuration
 | Option     |  Description                         |   Data Type   |   Default   |
 |----------------|--------------------------------------------------------------|---------------|---------------|
+|   ajax     |  Use ajax to fetch data from server              |   Array       |   false      |
+|   url     |  Server url to load data from while using ajax              |   Array       |   ""      |
 |   data     |  Items to be displayed in the table              |   Array       |   []      |
 |   actions    |  Action Buttons For Each Item                |   Array       |   []      |
 |   columns    |  Columns and Appropriate Data Assigment            |   Array       |   []      |
@@ -109,6 +116,13 @@ Here's how you would use it in Example.vue
 |   paginatable  |  Whether Or Not The Results Should Be paginatable      |   Boolean     |   true    |
 
 
+
+
+#### ajax
+Whether or not to use ajax for loading data into the table
+
+#### url
+This sets the ajax url to fetch data from if ajax is enabled
 
 #### data
 Items to be displayed in the table

@@ -50,9 +50,17 @@
 				<table class="table" :class="{straight: !breakWords, 'table-hover': !!onClick}">
 					<thead>
 						<tr>
+							<!-- Display Checkboxes If Requested -->
+							<th v-if="selectable">
+								<label class="custom-control custom-checkbox">
+									<input type="checkbox" class="custom-control-input" @change="selectAll">
+									<span class="custom-control-label"></span>
+								</label>
+							</th>
+
 							<!-- Display Index If Requested -->
 							<th
-								v-if="index" @click="sortIndex"
+								v-if="index" @click="sortIndex()"
 								class="sortable"
 								:class="{sort: sortColumn == '#', 'asc': sortColumn == '#' && asc, 'desc': sortColumn == '#' && !asc}"
 							>#</th>
@@ -73,11 +81,19 @@
 						<!-- Loop Through All Parsed and Paginated Items -->
 						<tr v-bind:key="i" v-for="(item, i) in paginatedItems" :class="{clickable: !!onClick}">
 
+							<!-- Display Checkboxes If Requested -->
+							<th v-if="selectable">
+								<div class="custom-control custom-checkbox" @click="select(item)">
+									<input type="checkbox" class="custom-control-input" :checked="item.selected">
+									<span class="custom-control-label"></span>
+								</div>
+							</th>
+
 							<!-- Display Index If Requested -->
 							<td v-if="index">{{ item.index + 1 }}</td>
 
 							<!-- Display All Parsed Values -->
-							<td v-bind:key="j" v-for="(td, j) in item.details" @click="click(item.row, td.value, td.name, i)" v-if="td.show">
+							<td v-bind:key="j" v-for="(td, j) in item.details" @click="click(item.row, td.value, td.name, i), columnClick(td.click, item.row, td.value, td.name, i)" v-if="td.show">
 								<!-- <component :is="i+'Component'" v-if="value.render"></component> -->
 								<span v-html="td.rendered != null ? td.rendered : '----'"></span>
 							</td>
@@ -91,7 +107,9 @@
 									:class="`btn-${button.color} btn-${button.size}`" 
 									v-bind:key="j" 
 									v-for="(button, j) in item.buttons" 
-									@click="button.action(item.row, i)"
+									@click="button.action(item.row, item.index)"
+									v-if="button.show"
+									:disabled="button.disabled"
 								>
 									{{ button.text }}
 								</button>
@@ -165,7 +183,11 @@ export default {
 			// Mapped Action Buttons
 			buttons: [],
 			// Loading State For Ajax Requests
-			ajaxLoading: false
+			ajaxLoading: false,
+			// Items To Be Displayed
+			renderedItems: [],
+			// Selected Items
+			selected: [],
 
 		}
 	},
@@ -260,6 +282,12 @@ export default {
 		paginatable: {
 			type: Boolean,
 			default: () => true
+		},
+
+		// Whether Or Not Items Should Be Selctable
+		selectable: {
+			type: Boolean,
+			default: () => false
 		}
 	},
 	methods: {
@@ -282,7 +310,7 @@ export default {
 			this.currentPage = this.renderedItems.length;
 		},
 		// Navigate To First Page
-		start() {
+		start() { 
 			this.currentPage = 1;
 		},
 		// Search Through Items With Provided Search Query 
@@ -324,6 +352,8 @@ export default {
 				return found;
 			});
 			this.renderedItems = retval;
+
+			this.sortIndex(false);
 		},
 		// Sort Items By Specified Column and Order
 		// Arguments
@@ -333,13 +363,13 @@ export default {
 			
 			this.renderedItems = this.renderedItems.sort((a,b) => {
 				var detailx = a.details.find(detail => detail.name == column);
-				var x = detailx.value;
+				var x = detailx.rendered;
 				if (!x) {
 					
 				}
 				x = typeof x == 'string' ? x.toLowerCase() : x;
 				var detaily = b.details.find(detail => detail.name == column);
-				var y = detaily.value;
+				var y = detaily.rendered;
 				if (!x) {
 					
 				}
@@ -359,16 +389,24 @@ export default {
 
 			this.currentPage = 1;
 		},
-		sortIndex(){
+
+		sortIndex(asc){
 			this.renderedItems = this.renderedItems.sort((a, b) => {
 				var indexA = a.index;
 				var indexB = b.index;
 				return indexA > indexB ? 1 : -1;
 			});
-			this.asc = this.sortColumn !== '#' ? true : !this.asc;
+			this.asc = this.sortColumn == '#' ? !this.asc : true;
 
-			if (!this.asc) {
-				this.renderedItems = this.renderedItems.reverse();
+			if (asc != undefined) {
+				if (!asc) {
+					// console.log(this.renderedItems);
+					this.renderedItems = this.renderedItems.reverse();
+				}
+			}else {
+				if (!this.asc) {
+					this.renderedItems = this.renderedItems.reverse();
+				}
 			}
 			
 			this.sortColumn = '#';
@@ -399,6 +437,8 @@ export default {
 
 			this.renderedItems = filtered;
 			this.currentPage = 1;
+
+			this.sortIndex(false);
 		},
 
 		getHeaders() {
@@ -407,7 +447,13 @@ export default {
 		mapItems(items) {
 			items = items.map((item, index) => {
 				// Row Item
-				var row = {row: item, details: [], index, buttons: []};
+				var row = {
+					row: item,
+					details: [],
+					index,
+					buttons: [],
+					selected: !!this.selected.find(a => a.index == index)
+				};
 
 				// Get Provided Columns
 				this.columns.forEach((column, index2) => {
@@ -424,7 +470,9 @@ export default {
 						// Origin Item Row
 						row: item,
 						// Whether Or Not To Display Item
-						show: column.show !== false
+						show: column.show !== false,
+						// Click Event For Column
+						click: column.click
 					});
 
 				});
@@ -437,7 +485,8 @@ export default {
 						...button,
 						// Decide Visibility Depending On Whether Show Method Is Provided
 						// Default: true
-						show: button.show ? button.show(item,index) : true
+						show: button.show ? button.show(item,index) : true,
+						disabled: button.disabled ? button.disabled(item, index) : false
 					});
 
 				});
@@ -451,6 +500,36 @@ export default {
 				this.onClick(...arguments);
 			}
 		},
+		columnClick(action, row, cell, name, index) {
+			if (action) {
+				action(row, cell, name, index);
+			}
+
+		},
+		selectAll(event) {
+			if (event.target.checked) {
+				this.selected = [];
+				this.renderedItems.forEach(item => {
+					item.selected = true;
+					this.selected.push(item);
+				});
+			}else {
+				this.selected = [];
+				this.renderedItems.forEach(item => {
+					item.selected = false;
+				});
+			}
+		},
+		select(item) {
+			var index = this.selected.findIndex(a => a.index == item.index);
+			if (index > -1) {
+				item.selected = false;
+				this.selected.splice(index, 1);
+			}else {
+				item.selected = true;
+				this.selected.push(item);
+			}
+		},
 
 		
 		// Alerts
@@ -462,17 +541,6 @@ export default {
 		}
 	},
 	computed: {
-		// Items To Be Displayed
-		renderedItems: {
-			get() {
-				var items = this.items;
-				items = this.mapItems(this.items);				
-				return items;
-			},
-			set(newValue) {
-				this.paginatedItems = newValue.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
-			}
-		},
 		// Total Number Of Pages For Pagination
 		pages() {
 			if (this.renderedItems.length > this.itemsPerPage) {
@@ -531,6 +599,9 @@ export default {
 		},
 		data(newValue) {
 			this.items = newValue;
+		},
+		renderedItems(newValue) {
+			this.paginatedItems = newValue.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
 		}
 	},
 	// Lifetime Events
@@ -623,7 +694,7 @@ export default {
 			white-space: nowrap
 		thead
 			th
-				// font-size: 13px
+				font-size: 12px
 				font-weight: 500
 				&.sortable
 					cursor: pointer

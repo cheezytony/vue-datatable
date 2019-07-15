@@ -732,7 +732,7 @@ export default {
 		&-filters
 			margin-bottom: 15px
 		&-filter
-			background: rgba(#000, .4)
+			background: #fff
 			border-radius: 3px
 			cursor: pointer
 			color: #777
@@ -741,10 +741,11 @@ export default {
 			padding: 5px 15px
 			margin: 0 0 3px 3px
 			&:hover
+				background: #aaa
 				color: #fff
 			&.active
-				background: #fff
-				color: #000
+				background: #337ab7
+				color: #fff
 
 
 </style>

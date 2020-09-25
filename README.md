@@ -240,8 +240,8 @@ It passes four arguments to the provided function
 | name    |   the name value provided in the columns config |
 | index   |   numeric index of the row starting from 0  |
 
-```<datatable :data="data" :columns="columns" :onclick="click"></datatable>```
-```javascript
+```<datatable :data="data" :columns="columns" :onClick="click"></datatable>```
+```JavaScript
 methods: {
   click(row, cell, name, index) {
 

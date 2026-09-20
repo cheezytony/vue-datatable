@@ -2,7 +2,7 @@
 	Vue Datatable 
 	Description: Vue Component for datatable with search, sorting, editing and pagination
 	Author: Antonio Okoro 
-	Version: 1.0.0 
+	Version: 1.1.0 
 -->
 <template>
 	<div class="data-table">
@@ -16,17 +16,8 @@
 					<div class="form-group">
 						<label>
 							Show 
-							<select  class="custom-select custom-select-sm" v-model="itemsPerPage">
-								<option value="1">1</option>
-								<option value="2">2</option>
-								<option value="5">5</option>
-								<option value="10">10</option>
-								<option value="15">15</option>
-								<option value="20">20</option>
-								<option value="25">25</option>
-								<option value="50">50</option>
-								<option value="75">75</option>
-								<option value="100">100</option>
+							<select  class="custom-select custom-select-sm" v-model.number="itemsPerPage">
+								<option v-for="size in pageSizes" :key="size" :value="size">{{ size }}</option>
 							</select> 
 							rows
 						</label>
@@ -34,7 +25,7 @@
 				</div>
 				<div class="col-md-6" v-if="searchable">
 					<div class="form-group">
-						<input type="text" class="form-control form-control-sm" placeholder="Search Records" @keyup="search(query)" v-model="query">
+						<input type="text" class="form-control form-control-sm" placeholder="Search Records" v-model="query">
 					</div>
 				</div>
 				<div class="col-auto ml-auto" v-if="showFilters">
@@ -53,7 +44,7 @@
 							<!-- Display Checkboxes If Requested -->
 							<th v-if="selectable">
 								<label class="custom-control custom-checkbox">
-									<input type="checkbox" class="custom-control-input" @change="selectAll">
+									<input type="checkbox" class="custom-control-input" :checked="allSelected" @change="selectAll">
 									<span class="custom-control-label"></span>
 								</label>
 							</th>
@@ -66,8 +57,8 @@
 							>#</th>
 							<!-- Display All Parsed Headers -->
 							<th 
-								v-bind:key="index" 
-								v-for="(th, index) in headers" 
+								v-bind:key="th.name"
+								v-for="th in headers"
 								@click="sort(th.name)" 
 								class="sortable"
 								:class="{sort: sortColumn == th.name, 'asc': sortColumn == th.name && asc, 'desc': sortColumn == th.name && !asc}"
@@ -79,7 +70,7 @@
 					</thead>
 					<tbody v-if="paginatedItems.length">
 						<!-- Loop Through All Parsed and Paginated Items -->
-						<tr v-bind:key="i" v-for="(item, i) in paginatedItems" :class="{clickable: !!onClick}">
+						<tr v-bind:key="item.index" v-for="(item, i) in paginatedItems" :class="{clickable: !!onClick}">
 
 							<!-- Display Checkboxes If Requested -->
 							<th v-if="selectable">
@@ -95,7 +86,8 @@
 							<!-- Display All Parsed Values -->
 							<td v-bind:key="j" v-for="(td, j) in item.details" @click="click(item.row, td.value, td.name, i), columnClick(td.click, item.row, td.value, td.name, i)" v-if="td.show">
 								<!-- <component :is="i+'Component'" v-if="value.render"></component> -->
-								<span v-html="td.rendered != null ? td.rendered : '----'"></span>
+								<span v-if="td.html" v-html="td.rendered != null ? td.rendered : '----'"></span>
+								<span v-else>{{ td.rendered != null ? td.rendered : '----' }}</span>
 							</td>
 							
 							<!-- Diplay Actions If Provided -->
@@ -119,7 +111,7 @@
 					<tbody v-else>
 						<!-- Display Empty Message If No Items Are Rendered -->
 						<tr>
-							<td align="center" :colspan="headers.length + (actions.length ? 1 : 0) + (index ? 1 : 0)">No results</td>
+							<td align="center" :colspan="headers.filter(h => h.show).length + (actions.length ? 1 : 0) + (index ? 1 : 0) + (selectable ? 1 : 0)">No results</td>
 						</tr>
 					</tbody>
 				</table>
@@ -138,7 +130,7 @@
 						{{ renderedItems.length }} items
 					</div>
 				</div>
-				<div class="col-md-6" v-if="paginate">
+				<div class="col-md-6" v-if="paginatable">
 					<ul class="pagination" v-if="paginateLinks.length">
 						<li class="page-item" v-if="pages && currentPage != 1">
 							<span class="page-link" @click="prev">Prev</span>
@@ -159,19 +151,19 @@
 <script>
 import toastr from "toastr";
 import Axios from "axios";
-import moment from "moment";
-import Vue from 'vue';
 export default {
 	data() {
 		return {
 			// Items TO Display For Each Paginated Page
-			itemsPerPage: 100,
+			itemsPerPage: this.perPage,
 			// Current Page Number In Pagination
 			currentPage: 1,
 			// Current Page Items
 			paginatedItems: [],
-			// Sort Order
-			asc: "asc",
+			// Sort Order (true = ascending)
+			asc: true,
+			// All Mapped Rows, Before Search And Filters
+			allRows: [],
 			// Column For Sorting
 			sortColumn: null,
 			// Search Query
@@ -207,10 +199,20 @@ export default {
 			type: Boolean,
 			default: () => false
 		},
+		// Key Holding The Items In The Ajax Response, A Plain Array Response Is Also Accepted
+		ajaxKey: {
+			type: String,
+			default: 'data'
+		},
+		// Default Number Of Rows Per Page
+		perPage: {
+			type: Number,
+			default: 100
+		},
 		// Ajax Headers
 		AjaxHeaders: {
 			type: Object,
-			default: () => {}
+			default: () => ({})
 		},
 		
 		
@@ -246,7 +248,7 @@ export default {
 		// Click Events For Each Cell
 		onClick: {
 			type: Function,
-			default: () => {}
+			default: null
 		},
 		// Whether Or Not The Table Should Be Allowed To Break Elements
 		breakWords: {
@@ -295,121 +297,84 @@ export default {
 		// Arguments
 		// 	Page: int
 		paginate(page) {
-			this.currentPage = page;
+			this.currentPage = Math.min(Math.max(page, 1), this.lastPage);
 		},
 		// Navigate To Next Page
 		next() {
-			this.currentPage = this.currentPage >= this.renderedItems.length ? 0 : this.currentPage + 1;
+			this.paginate(this.currentPage + 1);
 		},
 		// Navigate To Previous Page
 		prev() {
-			this.currentPage = this.currentPage <= 0 ? this.renderedItems.length : this.currentPage - 1;
+			this.paginate(this.currentPage - 1);
 		},
 		// Navigate To Last Page
 		end() {
-			this.currentPage = this.renderedItems.length;
+			this.paginate(this.lastPage);
 		},
 		// Navigate To First Page
 		start() { 
-			this.currentPage = 1;
+			this.paginate(1);
 		},
 		// Search Through Items With Provided Search Query 
 		// Arguments
 		// 	Query: string
 		search(query) {
-			var items = this.mapItems(this.items);
-			let retval = items.filter(item => {
-				
-				var found = false;
+			var needle = String(query || "").toLowerCase();
+			var matches = value => value != null && value.toString().toLowerCase().includes(needle);
+
+			this.renderedItems = this.allRows.filter(item => {
 				// Search In Mapped Data
-				item.details.forEach(detail => {
-					// Cancel If Original And Processed Value Are NULL
-					if (detail.value == null || detail.rendered == null) {
-						return;
-					}
-					// If Found In Original Value
-					if (detail.value.toString().match(new RegExp(query, "i"))) {
-						found = true;
-					}
-
-					// If Found In Processed Value
-					if (detail.rendered.toString().match(new RegExp(query, "i"))) {
-						found = true;
-					}
-				});
-
-				// Search In Provided Data
-				for (var column in item.row) {
-					if (!item.row[column]) {
-						continue;
-					}
-
-					if (item.row[column].toString().match(new RegExp(query, "i"))) {
-						found = true;
-					}
+				if (item.details.some(detail => matches(detail.value) || matches(detail.rendered))) {
+					return true;
 				}
-
-				return found;
+				// Search In Provided Data
+				return Object.keys(item.row).some(column => matches(item.row[column]));
 			});
-			this.renderedItems = retval;
 
-			this.sortIndex(false);
+			this.sortIndex(true);
 		},
-		// Sort Items By Specified Column and Order
+		// Compare Two Raw Values For Sorting, Empty Values Go Last
+		compare(x, y) {
+			var xEmpty = x == null || x === "", yEmpty = y == null || y === "";
+			if (xEmpty || yEmpty) {
+				return xEmpty === yEmpty ? 0 : (xEmpty ? 1 : -1);
+			}
+			if (typeof x === "number" && typeof y === "number") {
+				return x - y;
+			}
+			return String(x).localeCompare(String(y), undefined, {numeric: true, sensitivity: "base"});
+		},
+		// Sort Items By Specified Column, Toggling The Order When Clicked Again
 		// Arguments
 		// 	Column: String
-		// 	Order: String [asc, desc]
 		sort(column) {
-			
-			this.renderedItems = this.renderedItems.sort((a,b) => {
-				var detailx = a.details.find(detail => detail.name == column);
-				var x = detailx.rendered;
-				if (!x) {
-					
-				}
-				x = typeof x == 'string' ? x.toLowerCase() : x;
-				var detaily = b.details.find(detail => detail.name == column);
-				var y = detaily.rendered;
-				if (!x) {
-					
-				}
-				y = typeof y == 'string' ? y.toLowerCase() : y;
-				return x > y ? 1 : -1;
-			});
-			if (column !== this.sortColumn) {
-				this.asc = true;
-			}else {
-				this.asc = !this.asc;
-			}
-
-			if (!this.asc) {
-				this.renderedItems = this.renderedItems.reverse();
-			}
+			this.asc = column !== this.sortColumn ? true : !this.asc;
 			this.sortColumn = column;
+
+			var direction = this.asc ? 1 : -1;
+			var valueOf = item => {
+				var detail = item.details.find(detail => detail.name == column);
+				return detail ? detail.value : null;
+			};
+			// Empty Values Stay Last Regardless Of Direction
+			this.renderedItems = this.renderedItems.slice().sort((a, b) => {
+				var x = valueOf(a), y = valueOf(b);
+				var empty = x == null || x === "" || y == null || y === "";
+				return empty ? this.compare(x, y) : direction * this.compare(x, y);
+			});
 
 			this.currentPage = 1;
 		},
 
-		sortIndex(asc){
-			this.renderedItems = this.renderedItems.sort((a, b) => {
-				var indexA = a.index;
-				var indexB = b.index;
-				return indexA > indexB ? 1 : -1;
-			});
-			this.asc = this.sortColumn == '#' ? !this.asc : true;
-
-			if (asc != undefined) {
-				if (!asc) {
-					// console.log(this.renderedItems);
-					this.renderedItems = this.renderedItems.reverse();
-				}
-			}else {
-				if (!this.asc) {
-					this.renderedItems = this.renderedItems.reverse();
-				}
-			}
-			
+		// Sort Items By Their Original Position
+		// Arguments
+		// 	Asc: Boolean, Toggles The Current Order If Omitted
+		sortIndex(asc) {
+			this.asc = asc !== undefined ? asc : (this.sortColumn === '#' ? !this.asc : true);
 			this.sortColumn = '#';
+
+			var direction = this.asc ? 1 : -1;
+			this.renderedItems = this.renderedItems.slice().sort((a, b) => direction * (a.index - b.index));
 
 			this.currentPage = 1;
 		},
@@ -418,27 +383,19 @@ export default {
 			var filterValue = filter.value,
 			filterColumn = filter.name;
 
-			var items = this.mapItems(this.items);
-			var filtered = items.filter((item, index) => {
-				var column = item.details.find((column, i) => column.name == filterColumn);
+			this.renderedItems = this.allRows.filter((item, index) => {
+				var column = item.details.find(column => column.name == filterColumn);
 				if (!column) {
 					return false;
 				}
 				// If Value Type Is A Custom Function
-				if (filterValue.constructor.toString().match(/Function/)) {
-					if (filterValue(item.row, column.value, index)) {
-						return true;
-					}
-				}else if (column.value == filterValue || column.rendered == filterValue) {
-					return true;
+				if (typeof filterValue === "function") {
+					return !!filterValue(item.row, column.value, index);
 				}
-				return false;
+				return column.value == filterValue || column.rendered == filterValue;
 			});
 
-			this.renderedItems = filtered;
-			this.currentPage = 1;
-
-			this.sortIndex(false);
+			this.sortIndex(true);
 		},
 
 		getHeaders() {
@@ -472,7 +429,9 @@ export default {
 						// Whether Or Not To Display Item
 						show: column.show !== false,
 						// Click Event For Column
-						click: column.click
+						click: column.click,
+						// Whether Or Not The Rendered Value Should Be Treated As HTML
+						html: column.html === true
 					});
 
 				});
@@ -507,20 +466,16 @@ export default {
 
 		},
 		selectAll(event) {
-			if (event.target.checked) {
-				this.selected = [];
-				this.renderedItems.forEach(item => {
-					item.selected = true;
-					this.selected.push(item);
-				});
-			}else {
-				this.selected = [];
-				this.renderedItems.forEach(item => {
-					item.selected = false;
-				});
-			}
+			// Only Rows On The Current Page Are Affected
+			var checked = event.target.checked;
+			this.paginatedItems.forEach(item => {
+				if (item.selected !== checked) {
+					this.select(item, false);
+				}
+			});
+			this.$emit("selection-change", this.selected.map(item => item.row));
 		},
-		select(item) {
+		select(item, notify = true) {
 			var index = this.selected.findIndex(a => a.index == item.index);
 			if (index > -1) {
 				item.selected = false;
@@ -528,6 +483,9 @@ export default {
 			}else {
 				item.selected = true;
 				this.selected.push(item);
+			}
+			if (notify) {
+				this.$emit("selection-change", this.selected.map(item => item.row));
 			}
 		},
 
@@ -573,6 +531,22 @@ export default {
 			}
 			return links;
 		},
+		// Page Size Options, Always Including The Configured Default
+		pageSizes() {
+			var sizes = [1, 2, 5, 10, 15, 20, 25, 50, 75, 100];
+			if (!sizes.includes(this.perPage)) {
+				sizes.push(this.perPage);
+			}
+			return sizes.sort((a, b) => a - b);
+		},
+		// Last Available Page Number
+		lastPage() {
+			return Math.max(1, Math.ceil(this.renderedItems.length / this.itemsPerPage));
+		},
+		// Whether Every Row On The Current Page Is Selected
+		allSelected() {
+			return this.paginatedItems.length > 0 && this.paginatedItems.every(item => item.selected);
+		},
 		showFilters() {
 			return Object.keys(this.filters).length > 0;
 		}
@@ -588,14 +562,25 @@ export default {
 		items(newValue) {
 			this.getHeaders();
 
-			this.renderedItems = this.mapItems(newValue);
+			// Selection Belongs To The Previous Data, Clear It Before Mapping The New Rows
+			var hadSelection = this.selected.length > 0;
+			this.selected = [];
+			if (hadSelection) {
+				this.$emit("selection-change", []);
+			}
 
-			// Get All Items In Current Page
-			this.paginatedItems = this.renderedItems.slice(this.itemsPerPage * (this.currentPage - 1), (this.itemsPerPage * this.currentPage));
+			this.allRows = this.mapItems(newValue);
+			this.renderedItems = this.allRows.slice();
 
-			this.asc = true;
-
-			this.sortIndex();
+			// Keep Any Active Search Applied To The New Data
+			if (this.query) {
+				this.search(this.query);
+			} else {
+				this.sortIndex(true);
+			}
+		},
+		query(value) {
+			this.search(value);
 		},
 		data(newValue) {
 			this.items = newValue;
@@ -611,8 +596,7 @@ export default {
 
 		// Set Default Sorting To Index
 		// Asc will be converted to false so order will be in reverse
-		this.asc = true;
-		this.sortIndex();
+		this.sortIndex(true);
 
 		// Use Provided Data If Ajax Is Not Specified 
 		if (!this.ajax) {
@@ -624,16 +608,17 @@ export default {
 			// Get Data From Server Using Ajax
 			this.ajaxLoading = true;
 			await Axios
-				.get(this.url)
+				.get(this.url, {headers: this.AjaxHeaders})
 				.then(response => {
-					if (!response.data.data) {
+					var items = Array.isArray(response.data) ? response.data : response.data[this.ajaxKey];
+					if (!Array.isArray(items)) {
 						return this.error("Unable To Parse Data");
 					}
-					this.items = response.data.data;
+					this.items = items;
 					this.success("Data Loaded");
 				})
 				.catch(error => {
-					this.error(error || "Unable To Load Data");
+					this.error((error && error.message) || "Unable To Load Data");
 				});
 			this.ajaxLoading = false;
 		}
@@ -668,7 +653,7 @@ export default {
 			width: 75px
 		&-text
 			font-weight: 300
-			text-trnasform: uppercase
+			text-transform: uppercase
 	
 	&-control
 		.custom-select
@@ -678,7 +663,7 @@ export default {
 		&-responsive
 			margin-bottom: 30px
 			&::-webkit-scrollbar
-				-webkit-apperance: none
+				-webkit-appearance: none
 				height: 15px
 				width: 15px
 				&-track

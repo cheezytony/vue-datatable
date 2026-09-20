@@ -329,14 +329,21 @@ describe("search", () => {
 		expect(wrapper.find(".showing").text().replace(/\s+/g, " ")).toBe("Showing 1 to 10 of 11 items");
 	});
 
-	it("lists results in their original order", async () => {
+	it("lists results in their original order by default", async () => {
 		const wrapper = await build();
-		await wrapper.findAll("thead th").at(0).trigger("click");
 		await search(wrapper, "i");
 		// Charlie, alice, item10, item2 in original order
 		expect(column(wrapper, 0)).toEqual(["Charlie", "alice", "item10", "item2"]);
-		expect(wrapper.vm.sortColumn).toBe("#");
-		expect(wrapper.vm.asc).toBe(true);
+	});
+
+	it("keeps the current sort applied to the results", async () => {
+		const wrapper = await build();
+		await wrapper.findAll("thead th").at(0).trigger("click");
+		await search(wrapper, "i");
+		expect(column(wrapper, 0)).toEqual(["alice", "Charlie", "item2", "item10"]);
+		expect(wrapper.vm.sortColumn).toBe("name");
+		await search(wrapper, "");
+		expect(column(wrapper, 0)).toEqual(["alice", "Bob", "Charlie", "item2", "item10"]);
 	});
 
 	it("keeps an active query applied when the data changes", async () => {
@@ -457,6 +464,72 @@ describe("sorting", () => {
 	});
 });
 
+describe("default sort", () => {
+	it("uses the original order when no default is given", async () => {
+		const wrapper = await build();
+		expect(wrapper.vm.sortColumn).toBe("#");
+		expect(wrapper.vm.asc).toBe(true);
+		expect(column(wrapper, 0)).toEqual(["Charlie", "alice", "Bob", "item10", "item2"]);
+	});
+
+	it("sorts by sortBy ascending on load", async () => {
+		const wrapper = await build({ sortBy: "name" });
+		expect(column(wrapper, 0)).toEqual(["alice", "Bob", "Charlie", "item2", "item10"]);
+		expect(wrapper.findAll("thead th").at(0).classes()).toEqual(expect.arrayContaining(["sort", "asc"]));
+	});
+
+	it("sorts descending with sortOrder", async () => {
+		const wrapper = await build({ sortBy: "age", sortOrder: "desc" });
+		expect(column(wrapper, 1)).toEqual(["100", "30", "20", "5", "----"]);
+		expect(wrapper.findAll("thead th").at(1).classes()).toEqual(expect.arrayContaining(["sort", "desc"]));
+	});
+
+	it("reverses the original order with sortBy # and sortOrder desc", async () => {
+		const wrapper = await build({ sortBy: "#", sortOrder: "desc", index: true });
+		expect(column(wrapper, 0)).toEqual(["5", "4", "3", "2", "1"]);
+	});
+
+	it("continues from the default when a header is clicked", async () => {
+		const wrapper = await build({ sortBy: "name", sortOrder: "desc" });
+		await wrapper.findAll("thead th").at(0).trigger("click");
+		expect(wrapper.vm.asc).toBe(true);
+		expect(column(wrapper, 0)[0]).toBe("alice");
+	});
+
+	it("applies the default to ajax data", async () => {
+		Axios.get.mockResolvedValue({ data: people });
+		const wrapper = await build({ ajax: true, url: "/users", data: [], sortBy: "name", sortOrder: "desc" });
+		expect(column(wrapper, 0)).toEqual(["item10", "item2", "Charlie", "Bob", "alice"]);
+	});
+
+	it("applies the default to replaced data", async () => {
+		const wrapper = await build({ sortBy: "name" });
+		await wrapper.setProps({ data: [{ name: "b", age: 1 }, { name: "a", age: 2 }] });
+		await flush();
+		expect(column(wrapper, 0)).toEqual(["a", "b"]);
+	});
+
+	it("re-sorts when the props change", async () => {
+		const wrapper = await build({ sortBy: "name" });
+		await wrapper.setProps({ sortOrder: "desc" });
+		expect(column(wrapper, 0)).toEqual(["item10", "item2", "Charlie", "Bob", "alice"]);
+		await wrapper.setProps({ sortBy: "age" });
+		expect(column(wrapper, 1)).toEqual(["100", "30", "20", "5", "----"]);
+	});
+
+	it("leaves rows in their original order for a column that does not exist", async () => {
+		const wrapper = await build({ sortBy: "missing" });
+		expect(column(wrapper, 0)).toEqual(["Charlie", "alice", "Bob", "item10", "item2"]);
+	});
+
+	it("rejects an invalid sortOrder", async () => {
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+		await build({ sortOrder: "sideways" });
+		expect(error.mock.calls.join(" ")).toMatch(/sortOrder/);
+		error.mockRestore();
+	});
+});
+
 describe("filters", () => {
 	const filters = [
 		{ title: "Thirty", name: "age", value: 30 },
@@ -509,13 +582,19 @@ describe("filters", () => {
 		expect(column(wrapper, 0)).toEqual(["Charlie", "Bob", "item2"]);
 	});
 
-	it("returns to page 1 and original order", async () => {
-		const wrapper = await build({ filters, index: true });
-		wrapper.vm.sort("name");
+	it("returns to page 1", async () => {
+		const wrapper = await build({ filters, data: numbered(30), perPage: 10 });
+		wrapper.vm.paginate(2);
+		await flush();
 		await applyFilter(wrapper, 1);
 		expect(wrapper.vm.currentPage).toBe(1);
-		expect(wrapper.vm.sortColumn).toBe("#");
-		expect(column(wrapper, 1)).toEqual(["Charlie", "Bob", "item2"]);
+	});
+
+	it("keeps the current sort applied to the results", async () => {
+		const wrapper = await build({ filters });
+		wrapper.vm.sort("name");
+		await applyFilter(wrapper, 1);
+		expect(column(wrapper, 0)).toEqual(["Bob", "Charlie", "item2"]);
 	});
 });
 

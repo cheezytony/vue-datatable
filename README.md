@@ -103,6 +103,8 @@ Here's how you would use it in Example.vue
 |   url     |  Server url to load data from while using ajax              |   Array       |   ""      |
 |   ajaxKey     |  Key holding the items in the ajax response. A plain array response is also accepted              |   String       |   "data"      |
 |   perPage     |  Default number of rows per page (e.g. `:per-page="10"`)              |   Number       |   100      |
+|   sortBy     |  Column name to sort by initially. Use `"#"` for the original order              |   String       |   "#"      |
+|   sortOrder     |  Direction of the initial sort, `"asc"` or `"desc"`              |   String       |   "asc"      |
 |   data     |  Items to be displayed in the table              |   Array       |   []      |
 |   actions    |  Action Buttons For Each Item                |   Array       |   []      |
 |   columns    |  Columns and Appropriate Data Assigment            |   Array       |   []      |

@@ -161,11 +161,11 @@ export default {
 			// Current Page Items
 			paginatedItems: [],
 			// Sort Order (true = ascending)
-			asc: true,
+			asc: this.sortOrder !== 'desc',
 			// All Mapped Rows, Before Search And Filters
 			allRows: [],
-			// Column For Sorting
-			sortColumn: null,
+			// Column For Sorting, "#" Is The Original Order
+			sortColumn: this.sortBy,
 			// Search Query
 			query: '',
 			// Table Headers
@@ -203,6 +203,17 @@ export default {
 		ajaxKey: {
 			type: String,
 			default: 'data'
+		},
+		// Column To Sort By Initially, Use "#" For The Original Order
+		sortBy: {
+			type: String,
+			default: '#'
+		},
+		// Direction Of The Initial Sort
+		sortOrder: {
+			type: String,
+			default: 'asc',
+			validator: value => ['asc', 'desc'].includes(value)
 		},
 		// Default Number Of Rows Per Page
 		perPage: {
@@ -331,7 +342,7 @@ export default {
 				return Object.keys(item.row).some(column => matches(item.row[column]));
 			});
 
-			this.sortIndex(true);
+			this.resort();
 		},
 		// Compare Two Raw Values For Sorting, Empty Values Go Last
 		compare(x, y) {
@@ -344,39 +355,47 @@ export default {
 			}
 			return String(x).localeCompare(String(y), undefined, {numeric: true, sensitivity: "base"});
 		},
-		// Sort Items By Specified Column, Toggling The Order When Clicked Again
+		// Sort The Displayed Items By A Column And Direction
 		// Arguments
-		// 	Column: String
-		sort(column) {
-			this.asc = column !== this.sortColumn ? true : !this.asc;
+		// 	Column: String, "#" Is The Original Order
+		// 	Asc: Boolean
+		applySort(column, asc) {
 			this.sortColumn = column;
+			this.asc = asc;
 
-			var direction = this.asc ? 1 : -1;
+			var direction = asc ? 1 : -1;
 			var valueOf = item => {
 				var detail = item.details.find(detail => detail.name == column);
 				return detail ? detail.value : null;
 			};
-			// Empty Values Stay Last Regardless Of Direction
+
 			this.renderedItems = this.renderedItems.slice().sort((a, b) => {
+				if (column === '#') {
+					return direction * (a.index - b.index);
+				}
 				var x = valueOf(a), y = valueOf(b);
 				var empty = x == null || x === "" || y == null || y === "";
+				// Empty Values Stay Last Regardless Of Direction
 				return empty ? this.compare(x, y) : direction * this.compare(x, y);
 			});
 
 			this.currentPage = 1;
 		},
-
+		// Apply The Current Sort Again, For Example After The Rows Changed
+		resort() {
+			this.applySort(this.sortColumn, this.asc);
+		},
+		// Sort Items By Specified Column, Toggling The Order When Clicked Again
+		// Arguments
+		// 	Column: String
+		sort(column) {
+			this.applySort(column, column !== this.sortColumn ? true : !this.asc);
+		},
 		// Sort Items By Their Original Position
 		// Arguments
 		// 	Asc: Boolean, Toggles The Current Order If Omitted
 		sortIndex(asc) {
-			this.asc = asc !== undefined ? asc : (this.sortColumn === '#' ? !this.asc : true);
-			this.sortColumn = '#';
-
-			var direction = this.asc ? 1 : -1;
-			this.renderedItems = this.renderedItems.slice().sort((a, b) => direction * (a.index - b.index));
-
-			this.currentPage = 1;
+			this.applySort('#', asc !== undefined ? asc : (this.sortColumn === '#' ? !this.asc : true));
 		},
 
 		filter(filter){
@@ -395,7 +414,7 @@ export default {
 				return column.value == filterValue || column.rendered == filterValue;
 			});
 
-			this.sortIndex(true);
+			this.resort();
 		},
 
 		getHeaders() {
@@ -576,8 +595,14 @@ export default {
 			if (this.query) {
 				this.search(this.query);
 			} else {
-				this.sortIndex(true);
+				this.resort();
 			}
+		},
+		sortBy(column) {
+			this.applySort(column, this.sortOrder !== 'desc');
+		},
+		sortOrder(order) {
+			this.applySort(this.sortColumn, order !== 'desc');
 		},
 		query(value) {
 			this.search(value);
@@ -593,10 +618,6 @@ export default {
 	async mounted() {
 		// Parse Headers 
 		this.getHeaders();
-
-		// Set Default Sorting To Index
-		// Asc will be converted to false so order will be in reverse
-		this.sortIndex(true);
 
 		// Use Provided Data If Ajax Is Not Specified 
 		if (!this.ajax) {
